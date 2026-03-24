@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>spile — 캐릭터 채팅</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── 테마 변수 ─────────────────────────────── */
+    :root {
+      --gold:    #c4962a;
+      --gold-hi: #e8b84b;
+      --gold-dim:rgba(196,150,42,0.32);
+      --green:   #4ade80;
+    }
+
+    [data-theme="dark"] {
+      --bg:         #06060b;
+      --bg2:        #0d0d1a;
+      --surface:    #111122;
+      --card:       #12121f;
+      --card-hover: #181830;
+      --border:     rgba(196,150,42,0.16);
+      --border-hi:  rgba(196,150,42,0.35);
+      --text:       #e2ddd5;
+      --text-dim:   #807898;
+      --text-muted: #47435a;
+      --overlay:    rgba(6,6,11,0.85);
+    }
+
+    [data-theme="light"] {
+      --bg:         #f2ede8;
+      --bg2:        #ede8e0;
+      --surface:    #ffffff;
+      --card:       #ffffff;
+      --card-hover: #faf7f2;
+      --border:     rgba(196,150,42,0.25);
+      --border-hi:  rgba(196,150,42,0.5);
+      --text:       #1a1628;
+      --text-dim:   #5a5470;
+      --text-muted: #9a96aa;
+      --overlay:    rgba(242,237,232,0.92);
+    }
+
+    /* ── 기본 ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Nanum Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* Grain (다크만) */
+    [data-theme="dark"] body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.02; pointer-events: none; z-index: 9999;
+    }
+
+    /* ── 헤더 ──────────────────────────────────── */
+    #site-header {
+      position: sticky; top: 0; z-index: 100;
+      padding: 0 28px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--overlay);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+
+    #site-logo {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 22px; font-weight: 600;
+      color: var(--gold-hi);
+      letter-spacing: 0.12em;
+      text-decoration: none;
+    }
+    #site-logo span {
+      font-size: 11px; font-weight: 300;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      margin-left: 10px;
+      font-family: 'Nanum Gothic', sans-serif;
+    }
+
+    #header-right { display: flex; align-items: center; gap: 10px; }
+
+    .hdr-btn {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'Nanum Gothic', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+    .hdr-btn:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+    .hdr-btn svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+
+
+    /* ── 히어로 ────────────────────────────────── */
+    #hero {
+      padding: 72px 28px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    [data-theme="dark"] #hero::before {
+      content: '';
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse at 50% 0%,
+        rgba(196,150,42,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    #hero-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 11px; color: var(--gold);
+      border: 1px solid var(--gold-dim);
+      padding: 5px 14px; border-radius: 20px;
+      letter-spacing: 0.08em;
+      background: rgba(196,150,42,0.06);
+      margin-bottom: 22px;
+    }
+    #hero-tag .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 6px var(--green);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    #hero h1 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+    }
+    #hero h1 em {
+      font-style: normal;
+      color: var(--gold-hi);
+    }
+    #hero-sub {
+      font-size: 15px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* ── 캐릭터 섹션 ────────────────────────────── */
+    #char-section {
+      padding: 0 24px 80px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    #section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    #section-head h2 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 18px; font-weight: 400;
+      color: var(--text);
+      letter-spacing: 0.04em;
+    }
+    #section-head span {
+      font-size: 12px; color: var(--text-muted);
+    }
+
+    /* 캐릭터 그리드 */
+    #char-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    /* 캐릭터 카드 — 전체가 하나의 클릭 영역 */
+    .char-card {
+      border-radius: 16px;
+      overflow: hidden;
+      text-decoration: none;
+      display: block;
+      position: relative;
+      aspect-ratio: 3/4;
+      background: linear-gradient(160deg, #18102c 0%, #0c1830 40%, #1a0c1e 70%, #08080f 100%);
+      border: 1px solid var(--border);
+      transition: transform 0.24s, border-color 0.24s, box-shadow 0.24s;
+    }
+    [data-theme="light"] .char-card {
+      background: linear-gradient(160deg, #ddd0f0 0%, #c8d8f0 40%, #f0c8e0 70%, #e8e0f0 100%);
+    }
+    .char-card:not(.locked):hover {
+      transform: translateY(-6px) scale(1.01);
+      border-color: var(--gold-dim);
+      box-shadow: 0 16px 48px rgba(196,150,42,0.18);
+    }
+    .char-card.locked {
+      cursor: default;
+      opacity: 0.5;
+      filter: grayscale(0.5);
+    }
+
+    /* 카드 이미지 */
+    .card-img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top center;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+    .char-card:not(.locked):hover .card-img { transform: scale(1.05); }
+
+    /* 이미지 없을 때 플레이스홀더 (이모지 없는 빈 배경) */
+    .card-placeholder {
+      position: absolute; inset: 0;
+    }
+    .card-placeholder::before {
+      content: '';
+      position: absolute;
+      width: 130px; height: 130px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(196,150,42,0.1) 0%, transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+    }
+
+    /* 하단 그라데이션 오버레이 — 텍스트 배경 */
+    .card-overlay {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 48px 14px 16px;
+      background: linear-gradient(to bottom, transparent 0%, rgba(6,4,14,0.92) 60%, rgba(6,4,14,0.98) 100%);
+      transition: padding 0.24s;
+    }
+    [data-theme="light"] .card-overlay {
+      background: linear-gradient(to bottom, transparent 0%, rgba(20,15,35,0.88) 60%, rgba(20,15,35,0.96) 100%);
+    }
+    .char-card:not(.locked):hover .card-overlay { padding-bottom: 20px; }
+
+    /* 호버 시 "대화 시작" 표시 */
+    .card-hover-btn {
+      display: block;
+      background: var(--gold);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      color: #06060b;
+      font-size: 12px; font-weight: 700;
+      margin-bottom: 10px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.22s, transform 0.22s;
+    }
+    .char-card:not(.locked):hover .card-hover-btn {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .card-name {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 17px; font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+      letter-spacing: 0.03em;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+    }
+    .card-desc {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.55;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .card-tag {
+      font-size: 10px; padding: 2px 7px; border-radius: 20px;
+      border: 1px solid rgba(196,150,42,0.45);
+      color: var(--gold-hi);
+      background: rgba(196,150,42,0.12);
+    }
+
+    /* 준비중 뱃지 */
+    .card-badge-lock {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 10px; color: rgba(255,255,255,0.55);
+      letter-spacing: 0.06em;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ── 설정 모달 ──────────────────────────────── */
+    #settings-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    #settings-overlay.open { display: flex; }
+
+    #settings-modal {
+      background: var(--card);
+      border: 1px solid var(--border-hi);
+      border-radius: 18px;
+      padding: 28px;
+      width: 360px;
+      max-width: 92vw;
+      transition: background 0.3s;
+    }
+
+    #settings-modal h2 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 17px; font-weight: 600;
+      color: var(--gold-hi);
+      margin-bottom: 22px;
+      letter-spacing: 0.05em;
+    }
+
+    .setting-row {
+      margin-bottom: 22px;
+    }
+    .setting-label {
+      font-size: 12px; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.09em;
+      margin-bottom: 10px; display: block;
+    }
+
+    /* 테마 선택 버튼 그룹 */
+    .theme-btns {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    }
+    .theme-opt {
+      padding: 10px 6px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-family: 'Nanum Gothic', sans-serif;
+    }
+    .theme-opt .t-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+    .theme-opt .t-name { font-size: 11px; color: var(--text-dim); }
+    .theme-opt:hover { border-color: var(--gold-dim); }
+    .theme-opt.active {
+      border-color: var(--gold);
+      background: rgba(196,150,42,0.1);
+    }
+    .theme-opt.active .t-name { color: var(--gold); }
+
+    /* 구분선 */
+    .modal-divider {
+      height: 1px; background: var(--border);
+      margin: 6px 0 20px;
+    }
+
+    .modal-close {
+      width: 100%; padding: 11px;
+      background: var(--gold);
+      border: none; border-radius: 10px;
+      color: #06060b;
+      font-family: 'Nanum Gothic', sans-serif;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .modal-close:hover { background: var(--gold-hi); }
+
+    /* ── 푸터 ──────────────────────────────────── */
+    #site-footer {
+      border-top: 1px solid var(--border);
+      padding: 24px;
+      text-align: center;
+      font-size: 11px; color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── 모바일 ────────────────────────────────── */
+    @media (max-width: 600px) {
+      #site-header { padding: 0 16px; }
+      #site-logo span { display: none; }
+      #hero { padding: 48px 18px 36px; }
+      #char-section { padding: 0 14px 60px; }
+      #char-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .card-name { font-size: 15px; }
+      .card-desc { display: none; }
+      .card-overlay { padding: 32px 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── 헤더 ──────────────────────────────────── -->
+<header id="site-header">
+  <a href="index.html" id="site-logo">spile<span>캐릭터 채팅</span></a>
+  <div id="header-right">
+    <button class="hdr-btn" onclick="openSettings()">
+      <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.68.07-1.08s-.03-.74-.07-1.08l2.32-1.81c.21-.16.27-.46.13-.7l-2.2-3.81a.52.52 0 0 0-.64-.22l-2.73 1.1c-.57-.44-1.18-.81-1.86-1.09l-.42-2.9A.51.51 0 0 0 14 2h-4a.51.51 0 0 0-.5.42l-.42 2.9c-.68.28-1.29.65-1.86 1.09L4.49 5.31a.51.51 0 0 0-.64.22L1.65 9.34a.49.49 0 0 0 .13.7l2.32 1.81C4.06 12.26 4 12.63 4 13s.06.74.1 1.08L1.78 15.9a.49.49 0 0 0-.13.7l2.2 3.81c.13.24.41.32.64.22l2.73-1.1c.57.44 1.18.81 1.86 1.09l.42 2.9c.07.24.29.42.5.42h4c.24 0 .44-.18.5-.42l.42-2.9c.68-.28 1.29-.65 1.86-1.09l2.73 1.1c.23.1.5.02.64-.22l2.2-3.81a.49.49 0 0 0-.13-.7l-2.32-1.81z"/></svg>
+      설정
+    </button>
+  </div>
+</header>
+
+<!-- ── 히어로 ─────────────────────────────────── -->
+<section id="hero">
+  <div id="hero-tag">
+    <span class="dot"></span>
+    서사 중심 1:1 캐릭터 채팅
+  </div>
+  <h1>당신만의 이야기를<br><em>지금 시작하세요</em></h1>
+
+  <p id="hero-sub">
+    캐릭터를 선택하고 대화를 시작하세요.<br>
+    모든 대화는 소설처럼 이어집니다.
+  </p>
+</section>
+
+<!-- ── 캐릭터 선택 ───────────────────────────── -->
+<section id="char-section">
+  <div id="section-head">
+    <h2>캐릭터 선택</h2>
+    <span>3개 공개 · 1개 준비 중</span>
+  </div>
+
+  <div id="char-grid">
+
+    <!-- 수연 (공개) — 카드 전체가 하나의 링크 -->
+    <a class="char-card" href="chat.html">
+      <img class="card-img" src="asssssssdddasdhwef.png" alt="수연"
+           onerror="this.style.display='none'">
+      <div class="card-placeholder"></div>
+      <div class="card-overlay">
+        <div class="card-hover-btn">대화 시작 →</div>
+        <div class="card-name">수연</div>
+        <div class="card-desc">너를 좋아하지만 절대 인정 안 하는 츤데레. 편한 사복에 긴 생머리.</div>
+        <div class="card-tags">
+          <span class="card-tag">츤데레</span>
+          <span class="card-tag">현대</span>
+          <span class="card-tag">로맨스</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- 민지 (공개) -->
+    <a class="char-card" href="chat_minji.html">
+      <img class="card-img" src="화면 캡처 2026-03-24 193809.png" alt="민지"
+           onerror="this.style.display='none'">
+      <div class="card-placeholder"></div>
+      <div class="card-overlay">
+        <div class="card-hover-btn">대화 시작 →</div>
+        <div class="card-name">민지</div>
+        <div class="card-desc">차갑고 지적이지만 너한테만 비정상적으로 집착하는 연상녀. 27세.</div>
+        <div class="card-tags">
+          <span class="card-tag">집착</span>
+          <span class="card-tag">연상녀</span>
+          <span class="card-tag">소유욕</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- 파이어 (공개) -->
+    <a class="char-card" href="chat_fire.html">
+      <img class="card-img" src="화면 캡처 2026-03-24 201139.png" alt="파이어"
+           onerror="this.style.display='none'">
+      <div class="card-placeholder"></div>
+      <div class="card-overlay">
+        <div class="card-hover-btn">대화 시작 →</div>
+        <div class="card-name">파이어</div>
+        <div class="card-desc">드래곤인데 귀여운 척을 한다. 속으로는 오만하지만 겉으론 애교 폭발.</div>
+        <div class="card-tags">
+          <span class="card-tag">드래곤</span>
+          <span class="card-tag">귀여운 척</span>
+          <span class="card-tag">판타지</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- 준비 중 3 -->
+    <div class="char-card locked">
+      <div class="card-badge-lock">준비 중</div>
+      <div class="card-placeholder"></div>
+      <div class="card-overlay">
+        <div class="card-name" style="color:rgba(255,255,255,0.4)">???</div>
+        <div class="card-desc">새로운 캐릭터가 곧 추가됩니다.</div>
+        <div class="card-tags">
+          <span class="card-tag">일상</span>
+          <span class="card-tag">힐링</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── 푸터 ──────────────────────────────────── -->
+<footer id="site-footer">
+  ECHO · 서사 중심 캐릭터 채팅 · Powered by Groq llama-3.3-70b
+</footer>
+
+<!-- ── 설정 모달 ──────────────────────────────── -->
+<div id="settings-overlay" onclick="overlayClose(event)">
+  <div id="settings-modal">
+    <h2>⚙ 설정</h2>
+
+    <div class="setting-row">
+      <span class="setting-label">테마</span>
+      <div class="theme-btns">
+        <div class="theme-opt" id="t-dark" onclick="setTheme('dark')">
+          <span class="t-icon">🌙</span>
+          <span class="t-name">다크</span>
+        </div>
+        <div class="theme-opt" id="t-light" onclick="setTheme('light')">
+          <span class="t-icon">☀️</span>
+          <span class="t-name">라이트</span>
+        </div>
+        <div class="theme-opt" id="t-system" onclick="setTheme('system')">
+          <span class="t-icon">💻</span>
+          <span class="t-name">시스템</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-divider"></div>
+    <button class="modal-close" onclick="closeSettings()">닫기</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════
+//  테마 관리
+// ══════════════════════════════
+function applyTheme(mode) {
+  let resolved = mode;
+  if (mode === 'system') {
+    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.setAttribute('data-theme', resolved);
+
+  // 버튼 활성 표시
+  ['dark','light','system'].forEach(m => {
+    document.getElementById('t-' + m)?.classList.toggle('active', m === mode);
+  });
+}
+
+function setTheme(mode) {
+  localStorage.setItem('echo_theme', mode);
+  applyTheme(mode);
+}
+
+// 시스템 테마 변경 감지
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (localStorage.getItem('echo_theme') === 'system') applyTheme('system');
+});
+
+// 초기 적용
+const savedTheme = localStorage.getItem('echo_theme') || 'dark';
+applyTheme(savedTheme);
+
+// ══════════════════════════════
+//  설정 모달
+// ══════════════════════════════
+function openSettings() {
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+function overlayClose(e) {
+  if (e.target === document.getElementById('settings-overlay')) closeSettings();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeSettings();
+});
+</script>
+
+</body>
+</html>
